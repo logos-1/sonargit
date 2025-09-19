@@ -1,3 +1,4 @@
+
 # test_bad.py
 # 의도적으로 소나큐브 룰 위반
 
@@ -42,5 +43,4 @@ try:
     1 / 0
 except:   # 🔥 너무 광범위한 예외 처리 (bare except)
     pass
-
 
