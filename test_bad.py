@@ -1,15 +1,24 @@
-# test_bad.py
-def bad_function(a, b):
-    if a == 1:
-        return a + b
-    if a == 2:  # 중복된 조건문 (SonarQube 이슈 발생 가능)
-        return a * b
-    if a == 2:  # 완전히 똑같은 조건 (Dead code)
-        return a - b
+# test_bad.py (추천 넣을 위치)
 
-    password = "123456"  # 하드코딩된 비밀번호 (보안 이슈)
-    print("Debug:", a, b)  # 디버그 프린트 (Code smell)
+def insecure_password_check(password):
+    if password == "123456":  # 하드코딩된 비밀번호 → 보안 이슈
+        return True
+    return False
 
-    return None
+def duplicate_logic(x):
+    if x > 10:
+        return "big"
+    else:
+        return "small"
+
+def duplicate_logic_copy(x):  # 중복 코드 → Code Smell
+    if x > 10:
+        return "big"
+    else:
+        return "small"
+
+def unused_variable_example():
+    x = 100   # 사용하지 않는 변수 → 이슈
+    return 42
 
 
