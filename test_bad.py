@@ -1,47 +1,46 @@
+# 불필요한 import (사용하지 않음)
+import math
+import os
 
-# test_bad.py
-# 의도적으로 소나큐브 룰 위반
+# 전역 변수 남발
+BAD_GLOBAL = []
 
-import os   # 사용하지 않는 import (unused import)
+def insecure_function(password):
+    # 하드코딩된 비밀번호 (보안 이슈)
+    if password == "123456":
+        print("Weak password check!")  
 
-PASSWORD = "123456"  # 🔥 하드코딩된 비밀번호 (보안 이슈)
+    # 사용하지 않는 변수
+    unused_var = 42
 
-def add_numbers(a, b, c, d, e, f):  # 매개변수 너무 많음 (maintainability 이슈)
-    result = a + b
-    return result  # c, d, e, f 사용 안 함 (unused parameter 이슈)
+    # 중첩 루프 (복잡도 증가)
+    for i in range(10):
+        for j in range(10):
+            for k in range(10):
+                print(i, j, k)
 
-def dangerous_eval(user_input):
-    # 🔥 eval 사용은 보안 hotspot
-    return eval(user_input)
+    # 예외를 포괄적으로 처리 (비추)
+    try:
+        result = 1 / 0
+    except Exception as e:
+        print("Something went wrong")
 
-def nested_loops(x):
-    total = 0
-    for i in range(5):
-        for j in range(5):
-            if i > 0:
-                if j > 0:
-                    if x > 0:
-                        total += i * j * x   # 불필요하게 깊은 중첩 (cognitive complexity)
-    return total
+    # 리소스를 닫지 않음 (파일 누수 가능성)
+    f = open("test.txt", "w")
+    f.write("hello world")
 
-def mutable_default(value, data=[]):  # 가변 디폴트 파라미터
-    data.append(value)
-    return data
+    # SQL 인젝션 가능성 (문자열 직접 삽입)
+    query = "SELECT * FROM users WHERE name = '" + password + "'"
+    print(query)
 
-# 중복 코드 (duplicated blocks)
-def copy_paste1():
-    print("copy paste")
-    print("copy paste")
-    print("copy paste")
+    return True
 
-def copy_paste2():
-    print("copy paste")
-    print("copy paste")
-    print("copy paste")
 
-try:
-    1 / 0
-except:   # 🔥 너무 광범위한 예외 처리 (bare except)
-    pass
+def duplicate_code(a, b):
+    # 중복 코드 (SonarQube가 싫어함)
+    if a > b:
+        return a - b
+    else:
+        return b - a
 
 
