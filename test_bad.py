@@ -1,422 +1,426 @@
 
+# test_bad2.py
+# 또 다른 "의도적으로 나쁜" 코드 샘플 — SonarQube에서 다양한 규칙을 잡아내도록 구성
 
-# test_bad.py
-# 의도적으로 소나큐브 이슈를 많이 발생시키는 "나쁜 코드" 예제 파일
-
-# unused imports (사용하지 않는 import)
 import os
-import sys
-import math
-import json
-import pickle  # insecure when used with untrusted data
-from random import *  # wildcard import (bad practice)
-import hashlib  # insecure algorithm usage later
-import time
+import subprocess
+import threading
+import tempfile
+import ssl
+import socket
+import http.client
+import urllib.request
+from urllib.parse import urljoin
+from xml.etree import ElementTree as ET
+from collections import defaultdict
+from math import factorial  # unused
+from datetime import datetime  # used poorly later
 
-# global mutable
-BAD_GLOBAL = {}
-PASSWORD = "P@ssw0rd123"  # hardcoded credential (security issue)
-_api_key = "apikey-12345"  # hardcoded secret
+# Hardcoded secrets and credentials
+DB_USER = "admin"
+DB_PASS = "changeme"
+API_SECRET = "secret-token"
+PRIVATE_KEY_PEM = "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----"
 
-# shadowing builtin
-list = [1, 2, 3]
+# Global state mutated by many functions (bad)
+GLOBAL_COUNTER = 0
+GLOBAL_CACHE = {}
+LOCK = threading.Lock()  # but sometimes not used -> race condition
 
-def too_many_params(a, b, c, d, e, f, g, h, i, j):
-    # maintainability: too many parameters, some unused
-    result = a + b
-    unused_local = c  # unused var
-    # unreachable code pattern (after return)
-    return result
-    print("this is unreachable")
+# Overly broad class doing many responsibilities
+class EverythingDoer:
+    def __init__(self):
+        self.storage = {}
+        self.conn = None
 
-def mutable_default(arg=[]):
-    # mutable default argument (state shared across calls)
-    arg.append("bad")
-    return arg
+    def do_network_call(self, host, path):
+        # insecure SSL: disable verification (bad)
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        try:
+            conn = http.client.HTTPSConnection(host, context=ctx)
+            conn.request("GET", path)
+            resp = conn.getresponse()
+            return resp.read()
+        except Exception:
+            return b""
 
-def insecure_random_choice(seq):
-    # using random module from wildcard import
-    return choice(seq)  # nondeterministic and could be insecure usage
+    def run_shell(self, user_input):
+        # insecure subprocess usage with shell=True and string concat
+        cmd = "echo " + user_input
+        subprocess.call(cmd, shell=True)
 
-def duplicate_code_one(x):
+    def xml_parse(self, xml_str):
+        # insecure XML parsing without protection against XXE
+        try:
+            root = ET.fromstring(xml_str)
+            return root.tag
+        except Exception:
+            return None
+
+    def open_tempfile_bad(self):
+        # insecure temp file usage (race possible, no mode restrictions)
+        tmp = tempfile.mktemp()  # deprecated and insecure
+        f = open(tmp, "w")
+        f.write("data")
+        # no close, no cleanup
+        return tmp
+
+# Name shadowing builtins and modules
+open = "not a function"
+socket = "string now"
+
+# Functions with inconsistent return types and magic numbers
+def inconsistent_return(x):
     if x > 0:
-        return x * 2
-    else:
-        return -x
-
-def duplicate_code_two(x):
-    if x > 0:
-        return x * 2
-    else:
-        return -x
-
-def complex_function(a):
-    # very complex nesting and cyclomatic complexity
-    total = 0
-    for i in range(5):
-        if i % 2 == 0:
-            for j in range(5):
-                for k in range(3):
-                    if (i + j + k) % 3 == 0:
-                        total += i * j - k
-                    else:
-                        total += i + j + k
-        else:
-            for j in range(4):
-                if j == 2:
-                    total *= 2
-                else:
-                    total += j
-    try:
-        # deliberate division by zero to be caught by broad except
-        x = 1 / 0
-    except Exception:
-        # broad except (bad)
-        total = -1
-    return total
-
-def dangerous_eval(user_input):
-    # security hotspot: eval on user input
-    return eval(user_input)
-
-def dangerous_exec(code_str):
-    # exec usage (dangerous)
-    env = {}
-    exec(code_str, env)
-    return env
-
-# insecure file handling (not using with -> resource leak)
-def write_file_no_close(path, content):
-    f = open(path, "w")
-    f.write(content)
-    # forgot to close the file -> resource leak
-
-# insecure file handling (open in read but not exist handling)
-def read_file_no_check(path):
-    f = open(path, "r")
-    data = f.read()
-    return data  # file descriptor leaked
-
-# file operations with potential path injection
-def create_user_file(username, content):
-    # building path by concatenation (path traversal possibility)
-    path = "/tmp/" + username + ".txt"
-    f = open(path, "w")
-    f.write(content)
-    # no close again
-
-# insecure SQL string construction (SQL injection)
-def build_query(user_input):
-    query = "SELECT * FROM users WHERE name = '" + user_input + "' AND pwd = '" + PASSWORD + "'"
-    print("Running query:", query)
-    return query
-
-# using pickle on untrusted data (RCE potential)
-def load_data(raw_bytes):
-    return pickle.loads(raw_bytes)
-
-# weak cryptography usage
-def simple_hash(value):
-    # using md5 is insecure
-    m = hashlib.md5()
-    m.update(value.encode("utf-8"))
-    return m.hexdigest()
-
-# reassign builtin name
-def reassign_builtin():
-    global max
-    max = 5  # shadowing builtin function
-
-# deeply nested functions (hard to read)
-def outer(a):
-    def inner(b):
-        def inner2(c):
-            if c > 0:
-                return c * b * a
-            else:
-                return c - b - a
-        return inner2
-    return inner(2)
-
-# sleeping in code path (bad for responsiveness)
-def slow_sleep():
-    time.sleep(2)
-    return "slept"
-
-# dead code (never used)
-def unused_function_one():
-    return "I am not used"
-
-def unused_function_two():
-    return "Also unused"
-
-# ignoring returned value
-def ignore_return():
-    os.system("echo 'run something'")  # using shell calls without sanitization
-
-# large function doing too many things
-def god_function(x, y, z, w):
-    # does too many responsibilities
-    res = 0
-    for i in range(100):
-        for j in range(20):
-            res += i * j
-            if i % 7 == 0:
-                res -= j
-    # duplicate logic
-    if x > y:
-        res += x - y
-    else:
-        res += y - x
-    # repeat earlier operation (duplicate)
-    if x > y:
-        res += x - y
-    else:
-        res += y - x
-    # mixing I/O with logic
-    f = open("god.log", "a")
-    f.write("res: " + str(res))
-    # forgot to close
-    return res
-
-# recursion with missing or shallow base case
-def bad_recursion(n):
-    if n <= 0:
-        return 0
-    # no tail recursion handling and potential deep recursion
-    return bad_recursion(n - 1) + 1
-
-# naughty use of globals
-def modify_global():
-    global BAD_GLOBAL
-    BAD_GLOBAL['count'] = BAD_GLOBAL.get('count', 0) + 1
-
-# OS command injection vulnerability example
-def run_command(user_input):
-    # insecure concatenation into shell command
-    cmd = "ls " + user_input
-    os.system(cmd)
-
-# regex with catastrophic backtracking example (naive)
-import re
-def catastrophic_regex(s):
-    pattern = re.compile(r"(a+)+b")
-    return bool(pattern.search(s))
-
-# unused import variable demonstration (json imported above not used)
-def use_none():
-    pass
-
-# mixing exceptions badly
-def multi_except(x):
-    try:
-        if x == 0:
-            raise ValueError("zero")
-        if x == 1:
-            raise KeyError("one")
         return x
-    except (ValueError, KeyError) as e:
-        # do nothing useful
-        print("error occurred")
-    except:
-        # bare except (very bad)
-        print("unexpected error")
+    if x == 0:
+        return "zero"
+    # implicitly returns None otherwise
 
-# silent failures
-def silent_fail():
-    try:
-        1 / 0
-    except ZeroDivisionError:
-        # swallow the exception silently
-        pass
+# Busy-wait loop (CPU burn)
+def busy_wait(limit):
+    i = 0
+    while i < limit:
+        i += 1  # no sleep -> CPU hog
+    return i
 
-# variable shadowing in nested scopes
-var = 10
-def shadowing():
-    var = 20  # shadows outer var
-    def inner():
-        nonlocal_var = 30
-        return nonlocal_var
-    return var
+# Race condition: sometimes uses lock, sometimes not
+def increment_global():
+    global GLOBAL_COUNTER
+    # sometimes forget locking
+    GLOBAL_COUNTER += 1
 
-# creating large list in memory unnecessarily
-def build_huge_list():
-    # memory waste - could use generator
-    huge = [i for i in range(100000)]
-    return huge[:10]
+def safe_increment():
+    global GLOBAL_COUNTER
+    with LOCK:
+        GLOBAL_COUNTER += 1
 
-# poor logging practice (using print)
-def log_stuff():
-    print("Important:", PASSWORD)  # printing secret
+# Using eval on formatted string
+def eval_builder(user_input):
+    expr = "{} + 1".format(user_input)
+    return eval(expr)
 
-# copy-paste badness: many repetitive small functions
-def bad_a(): return 1
-def bad_b(): return 1
-def bad_c(): return 1
-def bad_d(): return 1
-def bad_e(): return 1
-def bad_f(): return 1
+# Overly complicated list manipulation and slicing mistakes
+def list_madhouse(n):
+    a = []
+    for i in range(n):
+        a.append(i)
+    # unnecessary copy and slice
+    b = a[:]
+    return b[n//2 : n]  # may return empty unexpectedly
 
-# function naming inconsistency and magic numbers
-def compute_magic(x):
-    return x * 42 + 7  # magic numbers
-
-# using index access without checks
-def first_element(seq):
-    return seq[0]  # IndexError if empty
-
-# implicit type conversions and duck-typing abuse
-def add_any(a, b):
-    return a + b  # may raise TypeError
-
-# catching too broad exception and using it for control flow
-def control_with_exception(x):
+# Improper exception usage: control flow with exceptions
+def exception_control_flow(x):
     try:
         if x < 0:
             raise Exception("neg")
         return x
     except Exception:
-        return 0
+        return -1
 
-# open network socket without handling or timeouts (pseudo-example)
-def fake_network_call():
-    import socket
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    # no timeout set, no close, no error handling
+# Exposing secrets via print/log
+def reveal_secret():
+    print("DB credentials:", DB_USER, DB_PASS)
+    return DB_PASS
+
+# Creating files with insecure permissions
+def write_secret_file(path):
+    f = open(path, "w")
+    f.write(API_SECRET)
+    f.flush()
+    # overly permissive mode change
     try:
-        s.connect(("example.com", 80))
-        s.send(b"GET / HTTP/1.0\r\n\r\n")
-        data = s.recv(1024)
+        os.chmod(path, 0o777)
     except Exception:
-        data = b""
+        pass
+
+# Re-raising exceptions poorly
+def convert_and_fail(s):
+    try:
+        return int(s)
+    except ValueError as e:
+        # re-raise without context or handling
+        raise
+
+# Unnecessary encoding/decoding and double-serialization
+def encode_twice(s):
+    b = s.encode("utf-8")
+    bb = b.hex()
+    return bb.encode("utf-8").decode("utf-8")
+
+# Poor HTTP request handling (no timeout)
+def fetch_url(url):
+    req = urllib.request.Request(url)
+    # no timeout => may hang
+    with urllib.request.urlopen(req) as r:
+        return r.read()
+
+# Bad use of sockets (no timeout, no close)
+def raw_socket_connect(host, port):
+    s = socket.socket()
+    s.connect((host, port))
+    s.send(b"GET / HTTP/1.0\r\n\r\n")
+    data = s.recv(1024)
+    # forgot close
     return data
 
-# bad resource caching in global scope
-CACHE = {}
-def cache_result(key, value):
-    CACHE[key] = value  # never expires
+# Parsing user input into shell command insecurely
+def list_dir(user_input):
+    cmd = ["ls", user_input]
+    # accidentally pass through shell execution
+    subprocess.Popen(" ".join(cmd), shell=True)
 
-# reusing variables for different types
-def reuse_var():
-    x = 1
-    x = "string now"
-    x = [1, 2, 3]
-    return x
+# Silent swallowing of keyboard interrupt
+def loop_forever():
+    try:
+        while True:
+            pass
+    except KeyboardInterrupt:
+        # silently ignore user interruption
+        return
 
-# if/else branches that are identical (redundant)
-def redundant_branch(flag):
-    if flag:
-        do = 1 + 1
+# Re-creating heavy objects inside loop (inefficient)
+def create_many_objects(n):
+    result = []
+    for i in range(n):
+        result.append(dict(a=i, b=[j for j in range(1000)]))
+    return result
+
+# Unused large constant
+LARGE_CONST = [0] * 1000000
+
+# Duplicate code patterns separated across functions
+def compute_a(x):
+    if x > 10:
+        return x * 2
+    return x + 1
+
+def compute_b(x):
+    if x > 10:
+        return x * 2
+    return x + 1
+
+# Hardcoded timeout in seconds (magic number)
+def wait_magic():
+    import time
+    time.sleep(5)  # magic
+
+# Insecure JSON building by string concat
+def build_json_bad(k, v):
+    return '{"' + str(k) + '":"' + str(v) + '"}'
+
+# Unsafe deserialization stub (pretend)
+def unsafe_deserialize(s):
+    # pretend to use eval on incoming structure
+    return eval(s)
+
+# Function that swallows too many exception types
+def dangerous_io(path):
+    try:
+        with open(path, "r") as f:
+            return f.read()
+    except Exception:
+        # hides all errors
+        return ""
+
+# Unhandled Unicode issues: encode without errors param
+def force_encode(s):
+    return s.encode("ascii")  # may raise UnicodeEncodeError
+
+# Re-using socket variable name (shadowing)
+def confuse_socket():
+    socket = "i am not a socket"
+    return socket
+
+# Blocking join without timeout — can hang tests
+def start_thread_and_join():
+    t = threading.Thread(target=busy_wait, args=(10**7,))
+    t.start()
+    t.join()  # joins forever for big workload without timeout
+
+# Omitted input validation (path traversal)
+def save_user_file(username, content):
+    path = "/tmp/" + username  # path traversal possible
+    with open(path, "w") as f:
+        f.write(content)
+
+# Incorrect type checking and brittle logic
+def brittle(x):
+    if type(x) is int:
+        return x + 1
+    # doesn't handle subclasses or other numeric types
+    return None
+
+# Leaking file descriptors by opening many files
+def leak_files(n):
+    files = []
+    for i in range(n):
+        files.append(open("/dev/null", "r"))
+    # never closed
+
+# Poor use of subprocess output handling
+def capture_subprocess():
+    p = subprocess.Popen(["echo", "ok"], stdout=subprocess.PIPE)
+    out = p.stdout.read()  # no timeout, blocking
+    return out
+
+# Using deprecated APIs intentionally
+def deprecated_api_usage():
+    # tempfile.mktemp used earlier; here use os.tmpnam-like behavior
+    try:
+        name = tempfile.mktemp()
+    except Exception:
+        name = "/tmp/old"
+    return name
+
+# Insecure string formatting with percent formatting + user input
+def percent_formatting(user):
+    return "%s:%s" % (user, API_SECRET)
+
+# Creating files in world-writable dirs
+def create_world_writable():
+    path = "/tmp/world_writable_test.txt"
+    f = open(path, "w")
+    f.write("open")
+    f.close()
+    try:
+        os.chmod(path, 0o777)
+    except Exception:
+        pass
+
+# Overly permissive XML processing repeated
+def parse_many_xml(items):
+    results = []
+    for it in items:
+        results.append(EverythingDoer().xml_parse(it))
+    return results
+
+# Long function with many responsibilities and nested conditionals
+def spaghetti(a, b, c):
+    x = 0
+    if a:
+        for i in range(5):
+            if b:
+                x += i
+            else:
+                x -= i
+            if c:
+                x = x * 2
     else:
-        do = 1 + 1
-    return do
-
-# large multiline string build with concatenation (inefficient)
-def build_string():
-    s = ""
-    s += "a"
-    s += "b"
-    s += "c"
-    s += "d"
-    return s
-
-# multiple return points (harder to maintain)
-def multiple_returns(x):
-    if x == 0:
+        for j in range(3):
+            x += j
+    if x > 10:
+        return "big"
+    elif x == 0:
         return 0
-    if x == 1:
-        return 1
-    return x
+    else:
+        return None
 
-# leftover commented code (noisy)
-# def old_function():
-#     pass
+# Plaintext logging of secrets to a "log"
+def write_log(msg):
+    f = open("app.log", "a")
+    f.write(f"{datetime.now()} - {msg}\n")
+    # no rotation, no security
 
-# calling functions but ignoring exceptions entirely
-def call_many_things():
+# Poor validation: accepting any URL and using it
+def download_and_execute(url):
+    # insecurely download and eval content (do NOT run on real URLs)
+    data = fetch_url(url)
     try:
-        bad_a()
-        bad_b()
+        code = data.decode("utf-8")
+        # dangerous: eval of remote content
+        eval(code)
+    except Exception:
+        pass
+
+# Function that swallows exception and returns inconsistent type
+def parse_int_maybe(s):
+    try:
+        return int(s)
     except:
-        pass
+        return "NaN"
 
-# another insecure pattern: eval inside f-string
-def eval_in_fstring(expr):
-    return f"result: {eval(expr)}"
+# Misleading function name and side effects
+def is_safe_to_delete(path):
+    # actually deletes things! dangerous naming
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+        except Exception:
+            pass
+        return True
+    return False
 
-# constructing JSON insecurely by string concatenation
-def build_json_insecure(k, v):
-    return "{" + '"' + str(k) + '":"' + str(v) + '"' + "}"
+# Reassigning imported name
+def hijack_imports():
+    global urllib
+    urllib = "not a module anymore"
 
-# purposely long chain of attribute access (fragile)
-class A:
-    def __init__(self):
-        self.b = None
+# Repetition and code bloat: many tiny duplicate functions
+def tiny1(): return 1
+def tiny2(): return 1
+def tiny3(): return 1
+def tiny4(): return 1
+def tiny5(): return 1
+def tiny6(): return 1
+def tiny7(): return 1
+def tiny8(): return 1
+def tiny9(): return 1
+def tiny10(): return 1
 
-class B:
-    def __init__(self):
-        self.c = None
+# Use of eval in f-string again
+def fstring_eval(expr):
+    return f"calc: {eval(expr)}"
 
-def fragile_chain(obj):
-    # will throw if any part is None
-    return obj.b.c.d
+# Overcomplicated iterator logic
+def nested_iter(n):
+    it = iter(range(n))
+    res = []
+    for x in it:
+        for y in it:
+            res.append((x, y))
+    return res
 
-# infinite loop example
-def infinite_loop():
-    i = 0
-    while True:
-        i += 1
-        if i > 1000000000:
-            break
-    return i
+# Unnecessary conversion to/from JSON by building manual strings
+def roundtrip_json(k, v):
+    s = '{"k":"v"}'
+    # pretend to parse and build but do it wrong
+    return s.replace("k", str(k)).replace("v", str(v))
 
-# final main that ties many bad things together
+# main that triggers many bad things
 def main():
-    # call many bad patterns to ensure SonarQube picks them up
-    mutable_default()
-    insecure_random_choice([1,2,3])
-    duplicate_code_one(5)
-    duplicate_code_two(5)
-    complex_function(1)
+    ed = EverythingDoer()
+    ed.run_shell("hello; echo world")  # possible shell injection if user input used
+    ed.open_tempfile_bad()
+    write_secret_file("secrets.txt")
+    reveal_secret()
     try:
-        dangerous_eval("2+2")
+        fetch_url("http://example.com")  # no timeout
     except Exception:
         pass
+    raw_socket_connect("example.com", 80)
+    list_dir("; /")  # weird user input
+    start_thread_and_join()
+    create_many_objects(5)
+    leak_files(5)
+    percent_formatting("user_supplied")
+    parse_many_xml(["<a></a>", "<b></b>"])
+    write_log("Started")
     try:
-        dangerous_exec("a=5")
+        download_and_execute("http://localhost/code")
     except Exception:
         pass
-    write_file_no_close("tmp.txt", "hello")
-    read_file_no_check("tmp.txt")
-    create_user_file("user; rm -rf /", "data")
-    build_query("admin' OR '1'='1")
-    try:
-        load_data(b"not a pickle")
-    except Exception:
-        pass
-    simple_hash("secret")
-    reassign_builtin()
-    outer(3)
-    slow_sleep()
-    modify_global()
-    run_command("; echo hacked")
-    catastrophic_regex("aaaaa" * 10 + "b")
-    multi_except(0)
-    silent_fail()
-    shadowing()
-    build_huge_list()
-    log_stuff()
-    god_function(1,2,3,4)
-    bad_recursion(5)
-    fake_network_call()
-    cache_result("k", "v")
-    rebuild = build_string()
-    eval_in_fstring("3*7")
-    build_json_insecure("k", "v")
-    try:
-        fragile_chain(A())
-    except Exception:
-        pass
+    # mutate globals unsafely
+    for _ in range(10):
+        increment_global()
+    # call many tiny duplicates
+    tiny1(); tiny2(); tiny3(); tiny4(); tiny5()
+    fstring_eval("2*3")
+    nested_iter(5)
+    # return inconsistent type sometimes
+    print(inconsistent_return(-1))
 
 if __name__ == "__main__":
     main()
