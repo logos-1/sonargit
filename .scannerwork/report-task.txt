@@ -1,6 +1,7 @@
-projectKey=test_sonar
-serverUrl=http://localhost:9000
-serverVersion=25.9.0.112764
-dashboardUrl=http://localhost:9000/dashboard?id=test_sonar
-ceTaskId=046d115f-6522-45f3-89fa-367112a80bfd
-ceTaskUrl=http://localhost:9000/api/ce/task?id=046d115f-6522-45f3-89fa-367112a80bfd
+organization=logos-1
+projectKey=logos-1_yeji-test-project
+serverUrl=https://sonarcloud.io
+serverVersion=8.0.0.78371
+dashboardUrl=https://sonarcloud.io/dashboard?id=logos-1_yeji-test-project
+ceTaskId=AZvVQksUGO73JMxp9lWv
+ceTaskUrl=https://sonarcloud.io/api/ce/task?id=AZvVQksUGO73JMxp9lWv
