@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0  # Shallow clones should be disabled for better analysis
 
       - name: SonarCloud Scan
-        uses: SonarSource/sonarcloud-github-action@master
+        uses: SonarSource/sonarqube-scan-action@master
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -27,6 +27,7 @@ jobs:
           args: >
             -Dsonar.projectKey=logos-1_sonargit
             -Dsonar.organization=logos-1
+            -Dsonar.host.url=https://sonarcloud.io
 
       - name: Wait for Quality Gate
         run: sleep 10
