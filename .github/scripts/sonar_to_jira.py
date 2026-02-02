@@ -9,6 +9,7 @@ import sys
 import json
 import requests
 from typing import List, Dict, Optional
+from datetime import datetime, timedelta
 
 # Configuration
 SONAR_URL = "https://sonarcloud.io/api"
@@ -31,11 +32,18 @@ def get_sonar_issues() -> List[Dict]:
         "Authorization": f"Bearer {SONAR_TOKEN}"
     }
     
+    # Only fetch issues created in the last 10 minutes
+    ten_minutes_ago = datetime.utcnow() - timedelta(minutes=10)
+    created_after = ten_minutes_ago.strftime("%Y-%m-%dT%H:%M:%S+0000")
+    
     params = {
         "componentKeys": SONAR_PROJECT_KEY,
         "statuses": "OPEN",
+        "createdAfter": created_after,
         "ps": 100  # Page size
     }
+    
+    print(f"🔍 Fetching issues created after: {created_after}")
     
     response = requests.get(
         f"{SONAR_URL}/issues/search",
