@@ -30,7 +30,7 @@ jobs:
             -Dsonar.host.url=https://sonarcloud.io
 
       - name: Wait for Quality Gate
-        run: sleep 10
+        run: sleep 60
 
   create-jira-issues:
     name: Create Jira Issues from SonarCloud

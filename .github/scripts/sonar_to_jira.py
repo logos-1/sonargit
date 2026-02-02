@@ -258,7 +258,8 @@ def main():
     sonar_issues = get_sonar_issues()
     
     if not sonar_issues:
-        print("✅ No open issues found in SonarCloud. Nothing to do!")
+        print("✅ No open issues found in SonarCloud via API.")
+        print("💡 NOTE: If you just pushed code, SonarCloud might still be processing. Check the dashboard.")
         return
     
     # Create Jira issues
