@@ -1,3 +1,3 @@
-def check_value(value):
-    if value < 0:
-        raise BaseException("Value cannot be negative") # Noncompliant: this will be difficult for consumers to handle
+from collections import defaultdict
+
+d1 = defaultdict(default_factory=int) # Noncompliant: this creates a dictionary with a single key-value pair.
