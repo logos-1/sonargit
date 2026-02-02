@@ -15,7 +15,7 @@ SONAR_URL = "https://sonarcloud.io/api"
 SONAR_PROJECT_KEY = "logos-1_sonargit"
 JIRA_URL = "https://yjlee32333.atlassian.net"
 JIRA_PROJECT_KEY = "BTS"
-JIRA_ISSUE_TYPE = "Bug"  # Changed from '버그' to 'Bug' for API compatibility
+JIRA_ISSUE_TYPE = "버그"  # Changed to '버그' (Korean) as confirmed by metadata
 
 # Get credentials from environment
 SONAR_TOKEN = os.getenv("SONAR_TOKEN")
