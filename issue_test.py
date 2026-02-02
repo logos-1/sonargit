@@ -1,14 +1,15 @@
-import os
-import json # Noncompliant: unused import
+def exception_test():
+    try:
+        pass
+    except SystemExit:  # Noncompliant: the SystemExit exception is not re-raised.
+        pass
 
-def check_complexity(value):
-    # Noncompliant: Cognitive Complexity is too high
-    if value < 0:
-        if value > -10:
-            if value != -5:
-                if value != -4:
-                    print("Deep nesting")
-                    
-def security_test():
-    password = "secret_password_123" # Noncompliant: Hardcoded password
-    print(password)
+    try:
+        pass
+    except BaseException:  # Noncompliant: BaseExceptions encompass SystemExit exceptions and should be re-raised.
+        pass
+
+    try:
+        pass
+    except:  # Noncompliant: exceptions caught by this statement should be re-raised or a more specific exception should be caught.
+        pass
