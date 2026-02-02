@@ -135,9 +135,10 @@ def create_jira_issue(sonar_issue: Dict) -> Optional[str]:
     
     # Check if issue already exists
     sonar_key = sonar_issue.get("key")
-    if check_jira_issue_exists(sonar_key):
-        print(f"⏭️  Jira issue already exists for {sonar_key}, skipping...")
-        return None
+    # TEMPORARY DEBUG: Disable duplicate check to force creation
+    # if check_jira_issue_exists(sonar_key):
+    #     print(f"⏭️  Jira issue already exists for {sonar_key}, skipping...")
+    #     return None
     
     # Get rule details
     rule_key = sonar_issue.get("rule")
