@@ -15,7 +15,7 @@ SONAR_URL = "https://sonarcloud.io/api"
 SONAR_PROJECT_KEY = "logos-1_sonargit"
 JIRA_URL = "https://yjlee32333.atlassian.net"
 JIRA_PROJECT_KEY = "BTS"
-JIRA_ISSUE_TYPE = "버그"  # Changed to '버그' (Korean) as confirmed by metadata
+JIRA_ISSUE_TYPE = "버그"  # Bug in Korean
 
 # Get credentials from environment
 SONAR_TOKEN = os.getenv("SONAR_TOKEN")
@@ -75,6 +75,38 @@ def get_rule_details(rule_key: str) -> Optional[Dict]:
     return None
 
 
+def get_issue_snippet(component_key: str, start_line: int, end_line: int) -> Optional[str]:
+    """Fetch the source code snippet for the issue"""
+    headers = {
+        "Authorization": f"Bearer {SONAR_TOKEN}"
+    }
+    
+    # Fetch a few lines of context around the error
+    params = {
+        "key": component_key,
+        "from": max(1, start_line - 2),
+        "to": end_line + 2
+    }
+    
+    response = requests.get(
+        f"{SONAR_URL}/sources/lines",
+        headers=headers,
+        params=params
+    )
+    
+    if response.status_code == 200:
+        data = response.json()
+        lines = data.get("sources", [])
+        code_lines = []
+        for line_info in lines:
+            line_num = line_info.get("line")
+            code = line_info.get("code", "")
+            prefix = ">> " if start_line <= line_num <= end_line else "   "
+            code_lines.append(f"{prefix}{line_num}: {code}")
+        return "\n".join(code_lines)
+    return None
+
+
 def check_jira_issue_exists(sonar_issue_key: str) -> bool:
     """Check if Jira issue already exists for this SonarCloud issue"""
     auth = (JIRA_EMAIL, JIRA_API_TOKEN)
@@ -111,23 +143,39 @@ def create_jira_issue(sonar_issue: Dict) -> Optional[str]:
     rule_key = sonar_issue.get("rule")
     rule_details = get_rule_details(rule_key)
     
-    # Build issue description
+    # Get issue details
     severity = sonar_issue.get("severity", "UNKNOWN")
     message = sonar_issue.get("message", "No description")
-    component = sonar_issue.get("component", "").split(":")[-1]
-    line = sonar_issue.get("textRange", {}).get("startLine", "N/A")
+    component_full = sonar_issue.get("component", "")
+    component = component_full.split(":")[-1]
     
+    text_range = sonar_issue.get("textRange", {})
+    start_line = text_range.get("startLine", 0)
+    end_line = text_range.get("endLine", 0)
+    
+    # Build issue description
     description_parts = [
         f"*SonarCloud Issue:* {sonar_key}",
         f"*Severity:* {severity}",
         f"*Rule:* {rule_key}",
         f"*File:* {component}",
-        f"*Line:* {line}",
+        f"*Line:* {start_line}",
         "",
-        f"*Message:*",
-        message,
+        f"*Message:* {message}",
         "",
     ]
+    
+    # Add Code Snippet
+    if start_line > 0:
+        code_snippet = get_issue_snippet(component_full, start_line, end_line)
+        if code_snippet:
+            description_parts.extend([
+                "*Violating Code:*",
+                "{code:python}",
+                code_snippet,
+                "{code}",
+                ""
+            ])
     
     if rule_details:
         description_parts.extend([
